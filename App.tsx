@@ -360,7 +360,9 @@ export default function App() {
        if (result.winner === 'attacker') {
            newUnits = newUnits.filter(u => u.id !== curDefender.id);
        } else if (result.winner === 'defender') {
-           // Defender holds
+           // Attackers Lost! Remove them.
+           const attackerIds = curAttackers.map(a => a.id);
+           newUnits = newUnits.filter(u => !attackerIds.includes(u.id));
        }
 
        return { 
@@ -493,7 +495,11 @@ export default function App() {
                 
                 if (res.winner === 'attacker') {
                      newUnits = newUnits.filter(u => u.id !== defender.id);
+                } else if (res.winner === 'defender') {
+                     // Attacker lost
+                     newUnits = newUnits.filter(u => u.id !== attacker.id);
                 }
+
                 newUnits = newUnits.map(u => u.id === attacker.id ? { ...u, attacksLeft: 0 } : u);
                 
                 return { 

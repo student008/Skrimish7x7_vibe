@@ -98,8 +98,18 @@ export const canAttack = (attacker: Unit, defender: Unit, allUnits: Unit[]): boo
   if (attacker.attacksLeft <= 0) return false;
   if (attacker.player === defender.player) return false;
 
-  const dx = Math.abs(attacker.x - defender.x);
-  const dy = Math.abs(attacker.y - defender.y);
+  const dxRaw = defender.x - attacker.x;
+  const dyRaw = defender.y - attacker.y;
+
+  // FACING CHECK: Attacker must be facing the target
+  const facing = getVectorForRotation(attacker.rotation);
+  const dotProduct = dxRaw * facing.x + dyRaw * facing.y;
+  
+  // If dot product <= 0, the target is "behind" or exactly "side" relative to facing 90deg cone
+  if (dotProduct <= 0) return false;
+
+  const dx = Math.abs(dxRaw);
+  const dy = Math.abs(dyRaw);
   const dist = dx + dy;
 
   if (attacker.type === UnitType.ARCHER) {
@@ -136,7 +146,8 @@ export const isValidSupportPlacement = (supports: SupportLine[], newSupport: Sup
   if (supports.length >= 3) return false;
   for (const s of supports) {
     if (s.type === newSupport.type) {
-      if (Math.abs(s.index - newSupport.index) <= 1) return false;
+      // Allow adjacent lines, just not duplicates of the exact same line
+      if (s.index === newSupport.index) return false;
     }
   }
   return true;
@@ -193,8 +204,8 @@ export const resolveCombat = (
     log += `Attackers win!`;
     return { winner: 'attacker', log, atkTotal, defTotal };
   } else if (defTotal > atkTotal) {
-    log += `Defender holds!`;
-    return { winner: 'defender', log, atkTotal, defTotal };
+    log += `Defender Repels Attack! Attackers Lost.`;
+    return { winner: 'defender', log, atkTotal, defTotal }; // Change: Defender wins clearly
   } else {
     log += `Stalemate.`;
     return { winner: 'tie', log, atkTotal, defTotal };

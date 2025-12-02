@@ -191,6 +191,8 @@ const Board: React.FC<BoardProps> = ({
 
            const isAttacking = combatState?.attackerIds.includes(unit.id);
            const isDefending = combatState?.defenderId === unit.id;
+           
+           const isExhausted = unit.movesLeft === 0 && unit.attacksLeft === 0 && unit.player === 'player';
 
            return (
              <div
@@ -210,6 +212,7 @@ const Board: React.FC<BoardProps> = ({
                    transition-transform duration-300
                    ${isAttacking ? 'scale-125 z-40' : ''}
                    ${isDefending ? 'animate-bounce text-red-600' : ''}
+                   ${isExhausted ? 'grayscale opacity-60' : ''}
                 `}
                 style={{ 
                   transform: `rotate(${unit.rotation * 90}deg) ${isAttacking ? 'scale(1.2)' : 'scale(1)'}` 
@@ -250,7 +253,7 @@ const Board: React.FC<BoardProps> = ({
                     <UnitIcon type={unit.type} player={unit.player} />
 
                     {/* Moves Indicator */}
-                    {unit.movesLeft < unit.maxMoves && unit.player === 'player' && (
+                    {unit.movesLeft < unit.maxMoves && unit.player === 'player' && !isExhausted && (
                        <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-gray-400 animate-pulse"></div>
                     )}
                 </div>
