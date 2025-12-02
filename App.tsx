@@ -27,6 +27,12 @@ export default function App() {
     showComputerSupport: false
   });
 
+  // Ref to track current game state during async operations
+  const gameStateRef = useRef(gameState);
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
+
   const [setupUnitsLeft, setSetupUnitsLeft] = useState<UnitType[]>([...INITIAL_ARMY_COMPOSITION]);
   const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [aiPlan, setAiPlan] = useState<AIAction[] | null>(null);
@@ -469,44 +475,49 @@ export default function App() {
          await new Promise(r => setTimeout(r, 300));
 
       } else if (action.actionType === 'attack' && action.target) {
-         let attackInfo: {attacker: Unit, defender: Unit} | null = null;
+         // Using ref to get current state ensures we don't have stale closures inside the loop
+         const current = gameStateRef.current;
+         const attacker = current.units.find(u => u.id === action.unitId);
+         const defender = getUnitAt(current.units, action.target!.x, action.target!.y);
          
-         setGameState(current => {
-           const attacker = current.units.find(u => u.id === action.unitId);
-           const defender = getUnitAt(current.units, action.target!.x, action.target!.y);
-           if (attacker && defender) {
-              attackInfo = { attacker, defender };
-              return { ...current, combatState: { attackerIds: [attacker.id], defenderId: defender.id } };
-           }
-           return current;
-         });
-
-         if (attackInfo) {
+         if (attacker && defender) {
+             // 1. Start Animation
+             setGameState(prev => ({ 
+                 ...prev, 
+                 combatState: { attackerIds: [attacker.id], defenderId: defender.id } 
+             }));
+             
+             // 2. Wait for animation
              await new Promise(r => setTimeout(r, 800));
 
-             setGameState(current => {
-                const attacker = current.units.find(u => u.id === action.unitId);
-                const defender = getUnitAt(current.units, action.target!.x, action.target!.y);
-                if (!attacker || !defender) return { ...current, combatState: null }; 
+             // 3. Resolve Combat
+             setGameState(prev => {
+                const atk = prev.units.find(u => u.id === action.unitId);
+                const def = getUnitAt(prev.units, action.target!.x, action.target!.y);
+                if (!atk || !def) return { ...prev, combatState: null }; 
 
-                // Resolve
-                const res = resolveCombat([attacker], defender, current.computerSupport, current.playerSupport);
-                let newUnits = [...current.units];
+                const res = resolveCombat([atk], def, prev.computerSupport, prev.playerSupport);
+                
+                let newUnits = [...prev.units];
                 
                 if (res.winner === 'attacker') {
-                     newUnits = newUnits.filter(u => u.id !== defender.id);
+                     // Defender Killed
+                     newUnits = newUnits.filter(u => u.id !== def.id);
                 } else if (res.winner === 'defender') {
-                     // Attacker lost
-                     newUnits = newUnits.filter(u => u.id !== attacker.id);
+                     // Attacker Killed (Melee Rebound)
+                     newUnits = newUnits.filter(u => u.id !== atk.id);
                 }
-
-                newUnits = newUnits.map(u => u.id === attacker.id ? { ...u, attacksLeft: 0 } : u);
+                
+                // Update attacker stats if still alive
+                if (newUnits.some(u => u.id === atk.id)) {
+                    newUnits = newUnits.map(u => u.id === atk.id ? { ...u, attacksLeft: 0 } : u);
+                }
                 
                 return { 
-                  ...current, 
+                  ...prev, 
                   units: newUnits, 
                   combatState: null,
-                  logs: [...current.logs, res.log]
+                  logs: [...prev.logs, res.log]
                 };
              });
          }

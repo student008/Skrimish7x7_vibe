@@ -204,8 +204,16 @@ export const resolveCombat = (
     log += `Attackers win!`;
     return { winner: 'attacker', log, atkTotal, defTotal };
   } else if (defTotal > atkTotal) {
-    log += `Defender Repels Attack! Attackers Lost.`;
-    return { winner: 'defender', log, atkTotal, defTotal }; // Change: Defender wins clearly
+    // Melee attackers die if they lose. Ranged attackers just fail.
+    const isMeleeAttack = attackers.some(u => u.type !== UnitType.ARCHER);
+
+    if (isMeleeAttack) {
+        log += `Defender Repels Attack! Attackers Lost.`;
+        return { winner: 'defender', log, atkTotal, defTotal }; 
+    } else {
+        log += `Ranged Attack Failed.`;
+        return { winner: 'tie', log, atkTotal, defTotal }; // Treat as tie (nobody dies)
+    }
   } else {
     log += `Stalemate.`;
     return { winner: 'tie', log, atkTotal, defTotal };
