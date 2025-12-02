@@ -11,6 +11,23 @@ import { getComputerMovesLocal, getComputerSupportPlacement } from './services/a
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+const RULES_TEXT = `1. Gra toczy się na planszy z kwadratowymi polami, 7x7 pól.
+2. Każdy z graczy ma do dyspozycji maksymalnie sześć żetonów.
+3. Żetony reprezentują jednostki: piechotę, łuczników lub konnicę.
+4. Gracze rozmieszczają swoje jednostki na obszarze 2x3 pola przy krawędzi swojej planszy.
+5. Z boku planszy umieszcza się (zapisuje w sekrecie ich położenie, ujawniane stopniowo w czasie gry) trzy żetony wsparcia. Żeton odziaływuje na poziomy lub pionowy szereg pól, dodając +1 siły jednostkom na nim się znajdującym. Nie można ustawiać żetonów na sąsiadująych ze sobą rzędach lub kolumnach. Jeśli linie się krzyżują, wówczas jednostka znajdująca się na danym polu dostaje +2 do siły.
+6. Gracze na przemian wykonują ruchy swoimi jednostkami - każdy może poruszyć dowolną ilość jednostek w swojej turze.
+7. Kolejność czynności przed rozpoczęciem rozgrywki jest następująca: 1) Początkowy skład sił może być dowolny, gracze mogą się umówić co do składu armii. Klasyczna armia to 2 jednostki piechoty, 2 jednostki konnicy, 2 jednostki łuczników. Można się umówić, że na początku się "kupuje" armię (konnica - 2 punkty, pozostałe jednostki - 1 punkt) i skład armii trzyma w sekrecie do momentu wyłożenia żetonów. 2) Gracze układają zakryte żetony w formacji jakiej będą je potem ustawiać na planszy. 3) Zapisują położenie żetonów wsparcia. 4) Układają odkryte żetony jednostek na planszy. 
+8. Każda jednostka ma ustalony "przód", jest nim jeden z boków żetonu. Jeśli atak następuje z boku lub od tyłu, wówczas atakujący otrzymuje +1 do siły. Atakować można tylko jednostki sąsiadujące z polem będącym na "przodzie" jednostki.
+9. Każda jednostka może ruszyć się, atakować lub obrócić. Dozwolne są także dowolne dwie kombinacje tych akcji. Każda jednostka może też ruch+obrót+atak lub atak+obrót+ruch. Za "ruch" może też liczyć się "tupnięcie w miejscu", innymi słowy, po wyczerpaniu ruchów nie można się obracać. Konnica może wykonać dowolną kombinację akcji (np. obrót+ruch+obrót+atak+obrót+ruch) pod warunkami 1) nie więcej niż dwa ruchy na turę 2) jeden atak na turę 3) obracać się można dopóki został chociaż jeden ruch.
+10. Ruch jest to przesunięcie jednostki o jedno pole w pionie lub poziomie, na dowolne nie zajęte przez inną jednostkę pole.
+11. Kiedy dwie jednostki należące do różnych graczy znajdują się na polach sąsiadujących, można zadeklarować atak. Łucznicy nie walczą wręcz, kiedy zostają zaatakowani są automatycznie pobici. Atakować można jednostkę znajdującą się z frontu.
+12. Rozstrzygnięcie walki odbywa się przez porównanie siły dwóch jednostek. Jeśli któraś z jednostek ma większą siłę, wygrywa. Przy remisie obie pozostają na swoich polach. Obaj gracze muszą zadeklarować wszystkie bonusy do siły wynikające z położenia żetonów wsparcia. Nie trzeba jednak wskazywać ich umiejscowienia (np. czy bonus wynika z linii poziomej czy pionowej). Gracze mogą zaznaczać oczywiste lokalizacje żetonów. 
+13. Konnica atakująca z odległości 1 pola może poświęcić pozostały ruch na dodanie +1 do siły. (Szarża)
+14. Łucznicy nie inicjują walki wręcz, za to atakują z odległości jednego pola. Na siłę ataku nie ma wpływu, czy następuje on z flanki czy od przodu. Na wynik ataku wpływają żetony wsparcia, zarówno u łuczników jak i jednostki będącej celem. Łucznicy nie mogą strzelać "ponad" jakąś jednostką, nie mogą strzelać, kiedy sąsiadują z jakąś wrogą jednostką. Mogą natomiast atakować jednostkę znajdującą się na polu stykającym się rogiem z polem, na którym stoją łucznicy. 
+15. Pobita jednostka jest zdejmowana z planszy.
+16. Gra toczy się dopóki jeden z graczy nie straci wszystkich żetonów, podda się lub obaj gracze jeden po drugim nie wykonają żadnego ruchu.`;
+
 export default function App() {
   const [gameState, setGameState] = useState<GameState>({
     gridSize: GRID_SIZE,
@@ -26,6 +43,8 @@ export default function App() {
     pendingAttack: null,
     showComputerSupport: false
   });
+
+  const [showRules, setShowRules] = useState(false);
 
   // Ref to track current game state during async operations
   const gameStateRef = useRef(gameState);
@@ -699,8 +718,36 @@ export default function App() {
     : [];
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen p-4 gap-4 items-center lg:items-start justify-center overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-screen p-4 gap-4 items-center lg:items-start justify-center overflow-hidden relative">
       
+      {/* Rules Modal */}
+      {showRules && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col border border-slate-700 shadow-2xl">
+                <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/50 rounded-t-lg">
+                    <h2 className="text-xl font-bold text-white">Game Rules (Zasady Gry)</h2>
+                    <button 
+                        onClick={() => setShowRules(false)}
+                        className="text-slate-400 hover:text-white text-2xl font-bold px-2"
+                    >
+                        &times;
+                    </button>
+                </div>
+                <div className="p-6 overflow-y-auto text-sm text-slate-300 leading-relaxed whitespace-pre-wrap font-mono scrollbar-hide">
+                    {RULES_TEXT}
+                </div>
+                <div className="p-4 border-t border-slate-700 bg-slate-900/50 rounded-b-lg text-right">
+                    <button 
+                        onClick={() => setShowRules(false)}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
       <div className="flex-shrink-0 flex justify-center w-full lg:w-auto">
         <div className="w-full max-w-[600px] aspect-square">
           <Board 
@@ -721,13 +768,21 @@ export default function App() {
       </div>
 
       <div className="flex flex-col gap-4 w-full lg:w-96 h-full max-h-[90vh]">
-        <div className="bg-slate-800 p-4 rounded-lg shadow border border-slate-700">
-          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
-            Skrimish 7x7
-          </h1>
-          <div className="text-xs text-slate-400 mt-1">
-             {gameState.turn === 'game_over' ? `Winner: ${gameState.winner?.toUpperCase()}` : `Current Phase: ${gameState.turn}`}
+        <div className="bg-slate-800 p-4 rounded-lg shadow border border-slate-700 flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+              Skrimish 7x7
+            </h1>
+            <div className="text-xs text-slate-400 mt-1">
+               {gameState.turn === 'game_over' ? `Winner: ${gameState.winner?.toUpperCase()}` : `Current Phase: ${gameState.turn}`}
+            </div>
           </div>
+          <button 
+                onClick={() => setShowRules(true)}
+                className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-slate-300 border border-slate-600 transition-colors"
+            >
+                Display Rules
+            </button>
         </div>
 
         {gameState.turn === 'setup_placement' && (
