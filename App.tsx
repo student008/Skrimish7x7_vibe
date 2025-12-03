@@ -11,6 +11,44 @@ import { getComputerMovesLocal, getComputerSupportPlacement } from './services/a
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+// Extracted initialization logic for reuse in resetGame
+const getInitialComputerState = () => {
+    const compUnits: Unit[] = [];
+    const compTypes = [...INITIAL_ARMY_COMPOSITION];
+    
+    // Deployment zone for Computer (7x7, 1-based): 
+    // Top 2 rows (y=1, 2), centered 3 cols (x=3, 4, 5).
+    let placements: {x:number, y:number}[] = [];
+    for(let y=1; y<=2; y++) {
+      for(let x=3; x<=5; x++) {
+        placements.push({x,y});
+      }
+    }
+    // Shuffle placements
+    placements = placements.sort(() => Math.random() - 0.5);
+
+    compTypes.forEach((type, idx) => {
+       if (idx < placements.length) {
+         compUnits.push({
+           id: generateId(),
+           type,
+           player: 'computer',
+           x: placements[idx].x,
+           y: placements[idx].y,
+           rotation: Direction.SOUTH,
+           movesLeft: type === UnitType.CAVALRY ? 2 : 1,
+           attacksLeft: 1,
+           hasRotated: false,
+           maxMoves: type === UnitType.CAVALRY ? 2 : 1,
+           hp: 1
+         });
+       }
+    });
+
+    const compSupport = getComputerSupportPlacement();
+    return { units: compUnits, support: compSupport };
+};
+
 const RULES_TEXT = `1. Gra toczy się na planszy z kwadratowymi polami, 7x7 pól.
 2. Każdy z graczy ma do dyspozycji maksymalnie sześć żetonów.
 3. Żetony reprezentują jednostki: piechotę, łuczników lub konnicę.
@@ -62,47 +100,33 @@ export default function App() {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [gameState.logs]);
 
-  // Initial Computer Setup (Hidden)
-  useEffect(() => {
-    const compUnits: Unit[] = [];
-    const compTypes = [...INITIAL_ARMY_COMPOSITION];
+  // Game Reset Logic
+  const resetGame = () => {
+    const { units, support } = getInitialComputerState();
     
-    // Deployment zone for Computer (7x7, 1-based): 
-    // Top 2 rows (y=1, 2), centered 3 cols (x=3, 4, 5).
-    let placements: {x:number, y:number}[] = [];
-    for(let y=1; y<=2; y++) {
-      for(let x=3; x<=5; x++) {
-        placements.push({x,y});
-      }
-    }
-    // Shuffle placements
-    placements = placements.sort(() => Math.random() - 0.5);
-
-    compTypes.forEach((type, idx) => {
-       if (idx < placements.length) {
-         compUnits.push({
-           id: generateId(),
-           type,
-           player: 'computer',
-           x: placements[idx].x,
-           y: placements[idx].y,
-           rotation: Direction.SOUTH,
-           movesLeft: type === UnitType.CAVALRY ? 2 : 1,
-           attacksLeft: 1,
-           hasRotated: false,
-           maxMoves: type === UnitType.CAVALRY ? 2 : 1,
-           hp: 1
-         });
-       }
-    });
-
-    const compSupport = getComputerSupportPlacement();
-
     setGameState(prev => ({
-      ...prev,
-      units: [...prev.units, ...compUnits],
-      computerSupport: compSupport
+        gridSize: GRID_SIZE,
+        difficulty: prev.difficulty, // Preserve current difficulty
+        units: units,
+        playerSupport: [],
+        computerSupport: support,
+        turn: 'setup_placement',
+        winner: null,
+        selectedUnitId: null,
+        logs: ['Game Reset.', 'Place your units in the blue zone (Bottom 2 rows).'],
+        combatState: null,
+        pendingAttack: null,
+        showComputerSupport: false
     }));
+    setSetupUnitsLeft([...INITIAL_ARMY_COMPOSITION]);
+    setAiPlan(null);
+    setIsProcessingAI(false);
+  };
+
+  // Initial Computer Setup
+  useEffect(() => {
+    resetGame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addLog = (msg: string) => {
@@ -623,7 +647,8 @@ export default function App() {
        <div className="p-4 bg-slate-800 rounded-lg shadow-lg space-y-3">
          <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold text-blue-400">Your Turn</h2>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+                <span className="text-xs text-slate-400 font-bold uppercase hidden sm:inline">Difficulty:</span>
                 <select 
                     value={gameState.difficulty} 
                     onChange={(e) => setGameState(p => ({...p, difficulty: e.target.value as Difficulty}))}
@@ -777,12 +802,20 @@ export default function App() {
                {gameState.turn === 'game_over' ? `Winner: ${gameState.winner?.toUpperCase()}` : `Current Phase: ${gameState.turn}`}
             </div>
           </div>
-          <button 
+          <div className="flex flex-col gap-2 items-end">
+             <button 
                 onClick={() => setShowRules(true)}
-                className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-slate-300 border border-slate-600 transition-colors"
-            >
+                className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-slate-300 border border-slate-600 transition-colors w-full"
+             >
                 Display Rules
-            </button>
+             </button>
+             <button 
+                onClick={resetGame}
+                className="text-xs px-2 py-1 bg-red-900/40 hover:bg-red-800 rounded text-red-200 border border-red-800 transition-colors w-full"
+             >
+                Reset Game
+             </button>
+          </div>
         </div>
 
         {gameState.turn === 'setup_placement' && (
