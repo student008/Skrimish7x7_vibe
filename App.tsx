@@ -11,6 +11,14 @@ import { getComputerMovesLocal, getComputerSupportPlacement } from './services/a
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+// Helper to count initial units
+const getInitialUnitCounts = () => {
+  return INITIAL_ARMY_COMPOSITION.reduce((acc, type) => {
+    acc[type] = (acc[type] || 0) + 1;
+    return acc;
+  }, {} as Record<UnitType, number>);
+};
+
 // Extracted initialization logic for reuse in resetGame
 const getInitialComputerState = () => {
     const compUnits: Unit[] = [];
@@ -76,7 +84,7 @@ export default function App() {
     turn: 'setup_placement',
     winner: null,
     selectedUnitId: null,
-    logs: ['Welcome to "Skrimish 7x7"', 'Place your units in the blue zone (Bottom 2 rows).'],
+    logs: ['Welcome to "Skrimish 7x7"', 'Select a unit type and click the blue zone to place it.'],
     combatState: null,
     pendingAttack: null,
     showComputerSupport: false
@@ -90,7 +98,10 @@ export default function App() {
     gameStateRef.current = gameState;
   }, [gameState]);
 
-  const [setupUnitsLeft, setSetupUnitsLeft] = useState<UnitType[]>([...INITIAL_ARMY_COMPOSITION]);
+  // Setup State
+  const [availableUnits, setAvailableUnits] = useState<Record<UnitType, number>>(getInitialUnitCounts());
+  const [selectedPlacementType, setSelectedPlacementType] = useState<UnitType | null>(null);
+
   const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [aiPlan, setAiPlan] = useState<AIAction[] | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -113,12 +124,13 @@ export default function App() {
         turn: 'setup_placement',
         winner: null,
         selectedUnitId: null,
-        logs: ['Game Reset.', 'Place your units in the blue zone (Bottom 2 rows).'],
+        logs: ['Game Reset.', 'Select a unit type and click the blue zone to place it.'],
         combatState: null,
         pendingAttack: null,
         showComputerSupport: false
     }));
-    setSetupUnitsLeft([...INITIAL_ARMY_COMPOSITION]);
+    setAvailableUnits(getInitialUnitCounts());
+    setSelectedPlacementType(null);
     setAiPlan(null);
     setIsProcessingAI(false);
   };
@@ -133,6 +145,58 @@ export default function App() {
     setGameState(prev => ({ ...prev, logs: [...prev.logs, msg] }));
   };
 
+  const autoDeploy = () => {
+    const unitsToAdd: Unit[] = [];
+    const usedSpots = new Set(gameState.units.map(u => `${u.x},${u.y}`));
+    
+    // Deployment Zone: x: 3-5, y: 6-7
+    const potentialSpots: {x:number, y:number}[] = [];
+    for (let x=3; x<=5; x++) {
+        for (let y=6; y<=7; y++) {d
+            if (!usedSpots.has(`${x},${y}`)) {
+                potentialSpots.push({x, y});
+            }
+        }
+    }
+    // Shuffle
+    potentialSpots.sort(() => Math.random() - 0.5);
+    
+    let spotIndex = 0;
+    const remainingUnits: UnitType[] = [];
+    
+    // Flatten available units map to array
+    Object.entries(availableUnits).forEach(([type, count]) => {
+        for(let i=0; i<count; i++) remainingUnits.push(type as UnitType);
+    });
+
+    remainingUnits.forEach((type) => {
+        if (spotIndex < potentialSpots.length) {
+            const spot = potentialSpots[spotIndex];
+            unitsToAdd.push({
+                id: generateId(),
+                type,
+                player: 'player',
+                x: spot.x,
+                y: spot.y,
+                rotation: Direction.NORTH,
+                movesLeft: type === UnitType.CAVALRY ? 2 : 1,
+                attacksLeft: 1,
+                hasRotated: false,
+                maxMoves: type === UnitType.CAVALRY ? 2 : 1,
+                hp: 1
+            });
+            spotIndex++;
+        }
+    });
+
+    setGameState(prev => ({
+        ...prev,
+        units: [...prev.units, ...unitsToAdd],
+    }));
+    setAvailableUnits({ [UnitType.INFANTRY]: 0, [UnitType.ARCHER]: 0, [UnitType.CAVALRY]: 0 });
+    setSelectedPlacementType(null);
+  };
+
   const handleTileClick = (x: number, y: number) => {
     if (gameState.winner || isProcessingAI || aiPlan) return;
 
@@ -144,10 +208,16 @@ export default function App() {
   };
 
   const handleSetupPlacement = (x: number, y: number) => {
-    if (setupUnitsLeft.length === 0) return;
+    if (!selectedPlacementType) {
+        addLog("Select a unit type first.");
+        return;
+    }
+    if (availableUnits[selectedPlacementType] <= 0) {
+        addLog(`No ${selectedPlacementType}s left.`);
+        return;
+    }
     
     // Validate Zone (Player is bottom 7x7: y=6,7, x=3-5)
-    // 1-Based: Rows 6, 7. Cols 3, 4, 5.
     if (y < 6 || x < 3 || x > 5) {
       addLog("Invalid placement zone (Bottom center 2x3).");
       return;
@@ -157,7 +227,7 @@ export default function App() {
       return;
     }
 
-    const type = setupUnitsLeft[0];
+    const type = selectedPlacementType;
     const newUnit: Unit = {
       id: generateId(),
       type,
@@ -176,12 +246,19 @@ export default function App() {
       ...prev,
       units: [...prev.units, newUnit]
     }));
-    setSetupUnitsLeft(prev => prev.slice(1));
     
-    if (setupUnitsLeft.length === 1) {
-      addLog("Units placed. Toggle 3 secret support lines using the board headers.");
-      setGameState(prev => ({ ...prev, turn: 'setup_support' }));
-    }
+    setAvailableUnits(prev => {
+        const newState = { ...prev, [type]: prev[type] - 1 };
+        // If run out, deselect
+        if (newState[type] <= 0) setSelectedPlacementType(null);
+        return newState;
+    });
+  };
+
+  const finishPlacement = () => {
+    // Transition to Support Phase
+    setGameState(prev => ({ ...prev, turn: 'setup_support' }));
+    addLog("Placement finished. Set support lines.");
   };
 
   const toggleSupport = (type: 'row' | 'col', index: number) => {
@@ -208,10 +285,6 @@ export default function App() {
   };
 
   const finishSetup = () => {
-    if (gameState.playerSupport.length !== 3) {
-      addLog("You must select exactly 3 support lines.");
-      return;
-    }
     setGameState(prev => ({ ...prev, turn: 'player' }));
     addLog("Game Start! Your Turn.");
   };
@@ -843,28 +916,59 @@ export default function App() {
         {gameState.turn === 'setup_placement' && (
              <div className="p-4 bg-slate-800 rounded-lg shadow-lg">
                <h2 className="text-xl font-bold mb-2 text-blue-400">Deployment</h2>
-               <div className="flex gap-2 mb-2 flex-wrap">
-                 {setupUnitsLeft.map((u, i) => (
-                   <div key={i} className="px-2 py-1 bg-slate-700 rounded text-xs border border-slate-600">
-                     {u}
-                   </div>
+               <p className="text-xs text-slate-500 mb-4">1. Select Type. 2. Click Blue Zone.</p>
+               
+               <div className="grid grid-cols-3 gap-2 mb-4">
+                 {[UnitType.INFANTRY, UnitType.ARCHER, UnitType.CAVALRY].map((type) => (
+                   <button
+                     key={type}
+                     onClick={() => availableUnits[type] > 0 && setSelectedPlacementType(type)}
+                     disabled={availableUnits[type] <= 0}
+                     className={`
+                       flex flex-col items-center justify-center p-2 rounded border text-xs font-bold transition-all
+                       ${selectedPlacementType === type 
+                          ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_10px_rgba(37,99,235,0.5)] scale-105' 
+                          : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'}
+                       ${availableUnits[type] <= 0 ? 'opacity-40 grayscale cursor-not-allowed' : ''}
+                     `}
+                   >
+                     <span>{type}</span>
+                     <span className="text-lg">{availableUnits[type]}</span>
+                   </button>
                  ))}
                </div>
-               {setupUnitsLeft.length === 0 && <span className="text-green-500">All placed.</span>}
-               <p className="text-xs text-slate-500 mt-2">Place in bottom center (2x3 area).</p>
+               
+               <button 
+                 onClick={finishPlacement}
+                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded font-bold text-white shadow-lg border-b-4 border-blue-800 active:border-b-0 active:mt-1"
+               >
+                 Next Phase: Set Supports
+               </button>
+
+               <button 
+                 onClick={autoDeploy}
+                 className="mt-3 w-full py-2 bg-emerald-900/40 hover:bg-emerald-800/60 rounded text-emerald-200 text-xs border border-emerald-800/60 transition-colors"
+               >
+                 Auto-Fill Remaining
+               </button>
              </div>
         )}
         {gameState.turn === 'setup_support' && (
             <div className="p-4 bg-slate-800 rounded-lg shadow-lg">
                <h2 className="text-xl font-bold mb-2 text-blue-400">Supply Lines</h2>
-               <p className="text-xs text-slate-500 mb-4">Select 3 lines ({gameState.playerSupport.length}/3)</p>
+               <p className="text-xs text-slate-500 mb-4">Click headers to toggle ({gameState.playerSupport.length}/3)</p>
+               
                <button 
                  onClick={finishSetup}
-                 disabled={gameState.playerSupport.length !== 3}
-                 className="mt-4 w-full py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 rounded font-bold transition-colors"
+                 className="w-full py-3 bg-green-600 hover:bg-green-500 rounded font-bold text-white shadow-lg border-b-4 border-green-800 active:border-b-0 active:mt-1"
                >
-                 Start Game
+                 START GAME
                </button>
+               {gameState.playerSupport.length < 3 && (
+                 <p className="text-[10px] text-yellow-500/70 text-center mt-2">
+                   Warning: You are starting with fewer than 3 supports.
+                 </p>
+               )}
             </div>
         )}
 

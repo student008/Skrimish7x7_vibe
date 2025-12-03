@@ -46,7 +46,7 @@ const UnitIcon: React.FC<{ type: UnitType; player: Player }> = ({ type, player }
            
            {/* Arrow loaded */}
            <line x1="10" y1="50" x2="80" y2="50" stroke="currentColor" strokeWidth="4" />
-           <path d="M70,40 L85,50 L70,60" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeJoin="round" />
+           <path d="M70,40 L85,50 L70,60" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case UnitType.CAVALRY:

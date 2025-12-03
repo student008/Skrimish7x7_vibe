@@ -5,6 +5,9 @@ export const GRID_SIZE = 7;
 export const INITIAL_ARMY_COMPOSITION = [
   UnitType.INFANTRY, UnitType.INFANTRY,
   UnitType.ARCHER, UnitType.ARCHER,
+  UnitType.CAVALRY, UnitType.CAVALRY, 
+  UnitType.ARCHER, UnitType.ARCHER,
+  UnitType.INFANTRY, UnitType.INFANTRY,
   UnitType.CAVALRY, UnitType.CAVALRY
 ];
 
