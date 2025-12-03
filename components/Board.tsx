@@ -22,28 +22,43 @@ const UnitIcon: React.FC<{ type: UnitType; player: Player }> = ({ type, player }
   
   switch (type) {
     case UnitType.INFANTRY:
-      // Silhouette: Helmeted soldier with spear
+      // Icon: Helmet and Spear
       return (
-        <svg viewBox="0 0 100 100" className={`w-3/4 h-3/4 ${colorClass} drop-shadow-md`}>
-           <path d="M40,20 C40,15 45,10 50,10 C55,10 60,15 60,20 L60,35 L75,35 L85,25 L90,30 L80,40 L65,40 L65,85 L75,85 L75,90 L55,90 L55,60 L45,60 L45,90 L25,90 L25,85 L35,85 L35,40 L20,55 L15,50 L25,40 L40,35 Z M50,15 C48,15 46,17 46,20 L54,20 C54,17 52,15 50,15 Z" />
-           <path d="M15,10 L85,80" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+        <svg viewBox="0 0 100 100" className={`w-4/5 h-4/5 ${colorClass} drop-shadow-md`}>
+           {/* Spear diagonal background */}
+           <line x1="20" y1="85" x2="85" y2="20" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
+           <path d="M85,20 L75,25 L88,8 L92,25 L85,20" fill="currentColor" />
+           
+           {/* Helmet foreground */}
+           <path d="M25,55 C25,25 75,25 75,55 L75,75 L65,65 L65,55 L35,55 L35,65 L25,75 Z" fill="currentColor" stroke="none" />
+           {/* Helmet Details */}
+           <path d="M48,55 L52,55 L52,70 L50,75 L48,70 Z" fill="currentColor" opacity="0.7" />
+           <path d="M35,30 Q50,10 65,30" fill="none" stroke="currentColor" strokeWidth="3" opacity="0.7" />
         </svg>
       );
     case UnitType.ARCHER:
-       // Silhouette: Archer drawing bow
+       // Icon: Bow and Arrow
       return (
-        <svg viewBox="0 0 100 100" className={`w-3/4 h-3/4 ${colorClass} drop-shadow-md`}>
-           <path d="M45,15 C42,15 40,18 40,20 C40,23 42,25 45,25 L50,25 L50,35 L30,40 L20,30 L15,35 L25,45 L35,45 L35,60 L25,85 L30,90 L40,65 L45,65 L55,90 L60,85 L50,60 L50,45 L65,45 L75,55 L80,50 L70,40 L60,35 L60,25 C60,20 55,15 50,15 Z" />
+        <svg viewBox="0 0 100 100" className={`w-4/5 h-4/5 ${colorClass} drop-shadow-md`}>
            {/* Bow */}
-           <path d="M70,20 C50,30 50,70 70,80" fill="none" stroke="currentColor" strokeWidth="3" />
-           <path d="M70,20 L70,80" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.6"/>
+           <path d="M30,15 C0,35 0,65 30,85" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
+           <line x1="30" y1="15" x2="30" y2="85" stroke="currentColor" strokeWidth="1" opacity="0.8"/>
+           
+           {/* Arrow loaded */}
+           <line x1="10" y1="50" x2="80" y2="50" stroke="currentColor" strokeWidth="4" />
+           <path d="M70,40 L85,50 L70,60" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeJoin="round" />
         </svg>
       );
     case UnitType.CAVALRY:
-       // Silhouette: Horse head
+       // Icon: Horse Head
       return (
-        <svg viewBox="0 0 100 100" className={`w-3/4 h-3/4 ${colorClass} drop-shadow-md`}>
-            <path d="M30,80 L30,60 C30,60 20,55 20,40 C20,25 35,10 55,10 C60,10 70,12 75,15 C75,15 78,12 82,12 C85,12 85,15 82,18 C80,20 78,20 78,20 L80,35 L75,45 L65,45 L60,55 L65,70 L75,75 L75,85 L50,90 L40,80 Z M65,25 C63,25 62,27 62,29 C62,31 63,32 65,32 C67,32 68,31 68,29 C68,27 67,25 65,25 Z" />
+        <svg viewBox="0 0 100 100" className={`w-4/5 h-4/5 ${colorClass} drop-shadow-md`}>
+            {/* Base */}
+            <path d="M20,85 L80,85 L85,95 L15,95 Z" fill="currentColor" />
+            {/* Head */}
+            <path d="M30,85 L35,45 C35,45 25,40 25,25 C25,10 45,5 60,5 C70,5 75,10 80,15 C80,15 80,25 75,30 L70,35 L60,35 L55,40 L60,60 L70,70 L70,85 L30,85 Z" fill="currentColor" />
+            {/* Eye */}
+            <circle cx="60" cy="22" r="2" fill="rgba(0,0,0,0.3)" /> 
         </svg>
       );
     default:

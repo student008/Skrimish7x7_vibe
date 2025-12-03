@@ -591,6 +591,23 @@ export default function App() {
   };
 
   const renderGameControls = () => {
+     if (gameState.turn === 'game_over') {
+         return (
+             <div className="p-4 bg-slate-800 rounded-lg shadow-lg space-y-4 text-center border-2 border-slate-600">
+                <h2 className="text-2xl font-bold text-white">GAME OVER</h2>
+                <div className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-red-500">
+                    {gameState.winner === 'player' ? "VICTORY!" : "DEFEAT"}
+                </div>
+                <button 
+                  onClick={resetGame}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded font-bold text-white shadow-lg animate-pulse"
+                >
+                  PLAY AGAIN
+                </button>
+             </div>
+         );
+     }
+
      if (gameState.turn === 'computer') {
          if (aiPlan && !isProcessingAI) {
              return (
@@ -647,21 +664,26 @@ export default function App() {
        <div className="p-4 bg-slate-800 rounded-lg shadow-lg space-y-3">
          <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold text-blue-400">Your Turn</h2>
-            <div className="flex gap-2 items-center">
-                <span className="text-xs text-slate-400 font-bold uppercase hidden sm:inline">Difficulty:</span>
-                <select 
-                    value={gameState.difficulty} 
-                    onChange={(e) => setGameState(p => ({...p, difficulty: e.target.value as Difficulty}))}
-                    className="bg-slate-700 text-xs rounded border border-slate-600 px-1"
-                >
-                    <option value="random">Rand</option>
-                    <option value="easy">Easy</option>
-                    <option value="medium">Med</option>
-                    <option value="hard">Hard</option>
-                </select>
+            
+            <div className="flex gap-2 items-center bg-slate-700/50 p-1.5 rounded-lg border border-slate-600">
+                <div className="flex flex-col leading-none">
+                    <label className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">AI Difficulty</label>
+                    <select 
+                        value={gameState.difficulty} 
+                        onChange={(e) => setGameState(p => ({...p, difficulty: e.target.value as Difficulty}))}
+                        className="bg-slate-800 text-xs text-white rounded border border-slate-600 px-1 py-0.5 focus:outline-none focus:border-blue-500"
+                        title="Random: Chaotic; Easy: Simple moves; Hard: Strategic"
+                    >
+                        <option value="random">Random</option>
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div className="h-6 w-px bg-slate-600 mx-1"></div>
                 <button 
                   onClick={endPlayerTurn}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded font-bold text-sm"
+                  className="px-3 py-2 bg-red-600 hover:bg-red-500 rounded font-bold text-xs shadow transition-colors"
                 >
                   End Turn
                 </button>
@@ -811,7 +833,7 @@ export default function App() {
              </button>
              <button 
                 onClick={resetGame}
-                className="text-xs px-2 py-1 bg-red-900/40 hover:bg-red-800 rounded text-red-200 border border-red-800 transition-colors w-full"
+                className="text-xs px-3 py-1 bg-red-900/40 hover:bg-red-800 rounded text-red-200 border border-red-800 transition-colors w-full shadow-sm"
              >
                 Reset Game
              </button>
